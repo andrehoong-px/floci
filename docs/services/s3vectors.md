@@ -69,3 +69,36 @@ deletion so concurrent changes do not overwrite each other or restore deleted da
 
 Encryption settings are stored and returned; Floci does not perform KMS encryption.
 Standalone S3 Vectors tagging APIs are not implemented.
+
+## CloudFormation
+
+`AWS::S3Vectors::VectorBucket` and `AWS::S3Vectors::Index` create real S3 Vectors
+resources. Both return their ARN from `Ref` and expose `CreationTime` through
+`Fn::GetAtt`. The ARN attributes are `VectorBucketArn` and `IndexArn`, respectively.
+An index accepts either `VectorBucketName` or `VectorBucketArn`.
+
+```yaml
+Resources:
+  Vectors:
+    Type: AWS::S3Vectors::VectorBucket
+    Properties:
+      EncryptionConfiguration:
+        SseType: AES256
+  Embeddings:
+    Type: AWS::S3Vectors::Index
+    Properties:
+      VectorBucketArn: !Ref Vectors
+      DataType: float32
+      Dimension: 3
+      DistanceMetric: cosine
+      MetadataConfiguration:
+        NonFilterableMetadataKeys: [text]
+```
+
+Omitted names are generated in lowercase. Tag changes preserve resource identity
+and vector data, including removing tags dropped from the template. Other property
+changes replace the resource; a custom-named resource needs a different name when
+replacement would otherwise reuse its existing identity. Replacement cleanup and
+rollback use the normal CloudFormation lifecycle and honor `UpdateReplacePolicy`.
+Stack deletion removes indexes before their bucket. A bucket containing indexes
+outside the stack causes deletion to fail.
